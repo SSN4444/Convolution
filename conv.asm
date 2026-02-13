@@ -3,6 +3,7 @@ section .text
 global conv2d_asm
 
 ; rdi=in
+
 ; rsi=out
 ; rdx=ker
 ; rcx=w
