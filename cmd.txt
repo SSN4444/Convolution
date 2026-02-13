@@ -1,0 +1,6 @@
+sudo apt update
+sudo apt install imagemagick
+convert input2.jpg -colorspace Gray input2.pgm
+make clear
+make
+./main
