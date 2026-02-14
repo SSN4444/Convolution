@@ -69,7 +69,7 @@ int main()
     int w, h,T;
     T = 60;
 
-    float* in = readPGM("input.pgm", &w, &h);
+    float* in = readPGM("input5.pgm", &w, &h);
 
     float* out_c = calloc(w*h, sizeof(float));
     float* out_asm = calloc(w*h , sizeof(float));
@@ -129,18 +129,18 @@ int main()
 
 
     // /* Edge Detection */
-    // float ker[9] = {
-    //     -1,-1,-1,
-    //     -1, 8,-1,
-    //     -1,-1,-1
-    // };
+    float ker[9] = {
+        -1,-1,-1,
+        -1, 8,-1,
+        -1,-1,-1
+    };
 
     // /* Blur (جایگزین)
-    float ker[9] = {
-        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
-        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
-        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f
-    };
+    // float ker[9] = {
+    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
+    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
+    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f
+    // };
 
     // sharpen
     // float ker[9] = {
@@ -165,23 +165,23 @@ int main()
 
     
 
-    // double err = 0;
-    // int cnt = 0;
+    double err = 0;
+    int cnt = 0;
 
-    // for(int y=1; y<h-1; y++){
-    //     for(int x=1; x<w-1; x++){
-    //         int i = y*w + x;
-    //         err += fabs(out_c[i] - out_asm[i]);
-    //         cnt++;
-    //     }
-    // }
+    for(int y=1; y<h-1; y++){
+        for(int x=1; x<w-1; x++){
+            int i = y*w + x;
+            err += fabs(out_c[i] - out_asm[i]);
+            cnt++;
+        }
+    }
 
-    // err /= cnt;
+    err /= cnt;
 
     printf("C time = %f\n", t2-t1);
     printf("ASM time = %f\n", t4-t3);
     printf("speedup : %f\n",(t2-t1) / (t4-t3));
-    // printf("error : %f\n",err);
+    printf("error : %f\n",err);
 
     free(in);
     free(out_c);
