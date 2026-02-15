@@ -64,21 +64,23 @@ void writePGM(const char* name, float* img, int w, int h)
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc < 3) {
+    printf("Usage: %s <Blur|Sharpen|Edge_Detection>  <name of picture(.pmg)>\n", argv[0]);
+    return 1;
+    }
+
     int w, h,T;
     T = 60;
-    char[20] input = "inputs/input5.pgm";
+    char base[256] = "inputs/";
+    strcat(base, argv[2]);     
+    char* input = base;
 
     float* in = readPGM(input, &w, &h);
-    w = w + (8 - w%8) + 2;
-    h = h + 2;
-
-    zero_padding(in);
 
     float* out_c = calloc(w*h, sizeof(float));
     float* out_asm = calloc(w*h , sizeof(float));
-
 
     int k = 3;
 
@@ -133,90 +135,101 @@ int main()
 
 
 
-    // /* Edge Detection */
-    float ker[9] = {
+    // Edge_Detection 
+    float ker_Edge[9] = {
         -1,-1,-1,
         -1, 8,-1,
         -1,-1,-1
     };
 
-    // /* Blur (جایگزین)
-    // float ker[9] = {
-    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
-    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
-    //     1.00f/9.00f,1.00f/9.00f,1.00f/9.00f
-    // };
+    // Blur 
+    float ker_Blur[9] = {
+        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
+        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f,
+        1.00f/9.00f,1.00f/9.00f,1.00f/9.00f
+    };
 
-    // sharpen
-    // float ker[9] = {
-    //  0, -1,  0,
-    // -1,  5, -1,
-    //  0, -1,  0
-    // };
+    // Sharpen
+    float ker_sharpen[9] = {
+     0, -1,  0,
+    -1,  5, -1,
+     0, -1,  0
+    };
 
+    float ker[9];
+    //Blur
+    if (!strcmp(argv[1],"Blur")) {
+        memcpy(ker,ker_Blur,sizeof(ker));
+    }
+    // Sharpen
+    else if (!strcmp(argv[1],"Sharpen")) {
+        memcpy(ker,ker_sharpen,sizeof(ker));
+    }
+    //Edge_Detection
+    else if (!strcmp(argv[1],"Edge_Detection")){
+        memcpy(ker,ker_Edge,sizeof(ker));
+    }
 
-
-
-
-    /* اجرای convolution */
+    // اجرای convolution در c
     double t1 = now();
     conv2d_c(in, out_c, ker, w, h, k);
     double t2 = now();
     writePGM("output_c.pgm", out_c, w, h);
 
 
-
+    //zero paddings
     int pad = k/2;
     int h2 = h + 2*pad;
     int w2 = w + 2*pad;
     int w_pad = ((w2 + 7) / 8) * 8;
-
-    float* in_raw = readPGM(input, &w, &h);
+    w_pad += 2;
 
     float* in_pad  = calloc(w_pad*h2, sizeof(float));
     float* out_pad = calloc(w_pad*h2, sizeof(float));
 
     for(int y=0; y<h; y++){
-        memcpy(in_pad + (y+pad)*w_pad + pad,in_raw + y*w,w*sizeof(float)); //(تعداد عدد خوانده شده,ادرس مبدا,ادرس مقصد)
+        memcpy(in_pad + (y+pad)*w_pad + pad,in + y*w,w*sizeof(float)); //(تعداد عدد خوانده شده,ادرس مبدا,ادرس مقصد)
     }
 
 
 
-
+    //اجرای convolution در asm
     double t3 = now();
     conv2d_asm(in_pad, out_pad, ker, w_pad, h2, k);
     double t4 = now();
 
 
-    float* out_final = malloc(w*h*sizeof(float));
-    for(int y=0; y<h; y++)
-    {
-        memcpy(out_final + y*w,
-            out_pad + y*w_pad,
-            w*sizeof(float));
+    float* out_final_asm = malloc(w*h*sizeof(float));
+    for(int y=0; y<h; y++){
+        memcpy(out_final_asm + y*w,
+        out_pad + (y+pad)*w_pad + pad,
+        w*sizeof(float));
     }
-    writePGM("output_asm.pgm", out_final, w, h);
+    
+    writePGM("output_asm.pgm", out_final_asm, w, h);
 
     
-
+    //محاسبه خطا اسمبلی و سی نسبت به هم
     double err = 0;
     int cnt = 0;
 
-    for(int y=1; y<h-1; y++){
-        for(int x=1; x<w-1; x++){
+    for(int y=0; y<h; y++){
+        for(int x=0; x<w; x++){
             int i = y*w + x;
-            err += fabs(out_c[i] - out_asm[i]);
+            err += fabs(out_c[i] - out_final_asm[i]);
             cnt++;
         }
     }
 
     err /= cnt;
 
+    //گزارش نتایج
     printf("C time = %f\n", t2-t1);
     printf("ASM time = %f\n", t4-t3);
     printf("speedup : %f\n",(t2-t1) / (t4-t3));
     printf("error : %f\n",err);
 
+    //ازاد سازی حافظه 
     free(in);
     free(out_c);
     free(out_asm);

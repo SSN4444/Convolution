@@ -33,12 +33,12 @@ conv2d_asm:
     mov r11, rcx ; w
     shl r11, 2   ; stride = w * 4
 
-    xor r9, r9   ; y = 0
+    xor r9, r9 ; y = 0 
 .y_loop: ; حلقه y
     cmp r9, r8   ; y < h
     jge .done
 
-    xor r10, r10 ; x = 0
+    xor r10, r10 ;x=0
 .x_loop: ; x حلقه
     cmp r10, rcx ; x < w
     jge .next_y
@@ -57,10 +57,10 @@ conv2d_asm:
     cmp r10, rax ; x <= w-۹
     jg .scalar_pixel
 
-    ; y * w + x
+    
     mov rax, r9
     mul rcx
-    add rax, r10
+    add rax, r10 ; y * w + x
     lea r12, [rdi + rax*4] ;in اماده سازی برای خوندن از
     lea r15, [rsi + rax*4] ; out اماده سازی برای نوشتن در 
 
