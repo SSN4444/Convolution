@@ -78,9 +78,7 @@ int main(int argc, char *argv[])
     return 1;
     }
 
-    int w, h,T;
-    T = 60;
-    
+    int w, h;    
     // ساخت ادرس تصویر ورودی
     char base[256] = "inputs/";
     strcat(base, argv[2]);     
