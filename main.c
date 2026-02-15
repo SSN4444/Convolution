@@ -68,8 +68,13 @@ int main()
 {
     int w, h,T;
     T = 60;
+    char[20] input = "inputs/input5.pgm";
 
-    float* in = readPGM("input5.pgm", &w, &h);
+    float* in = readPGM(input, &w, &h);
+    w = w + (8 - w%8) + 2;
+    h = h + 2;
+
+    zero_padding(in);
 
     float* out_c = calloc(w*h, sizeof(float));
     float* out_asm = calloc(w*h , sizeof(float));
@@ -78,51 +83,51 @@ int main()
     int k = 3;
 
 
-    float* out_c2 = calloc(w*h, sizeof(float));
-    float* out_asm2 = calloc(w*h , sizeof(float));
-    float sobelX[9]= {
-        -1, 0, 1,
-        -2, 0, 2,
-        -1, 0, 1
+    // float* out_c2 = calloc(w*h, sizeof(float));
+    // float* out_asm2 = calloc(w*h , sizeof(float));
+    // float sobelX[9]= {
+    //     -1, 0, 1,
+    //     -2, 0, 2,
+    //     -1, 0, 1
 
-    };
-    float sobelY[9]= {
-        -1, -2, -1,
-        0,  0,  0,
-        1,  2, 1
-    };
+    // };
+    // float sobelY[9]= {
+    //     -1, -2, -1,
+    //     0,  0,  0,
+    //     1,  2, 1
+    // };
 
-    // double t5 = now();
-    // conv2d_c(in, out_c, sobelX, w, h, k);
-    // double t6 = now();
+    // // double t5 = now();
+    // // conv2d_c(in, out_c, sobelX, w, h, k);
+    // // double t6 = now();
 
-    double t7 = now();
-    conv2d_asm(in, out_asm, sobelX, w, h, k);
-    double t8 = now();
+    // double t7 = now();
+    // conv2d_asm(in, out_asm, sobelX, w, h, k);
+    // double t8 = now();
 
-    // double t9 = now();
-    // conv2d_c(in, out_c2, sobelY, w, h, k);
-    // double t10 = now();
+    // // double t9 = now();
+    // // conv2d_c(in, out_c2, sobelY, w, h, k);
+    // // double t10 = now();
 
-    double t11 = now();
-    conv2d_asm(in, out_asm2, sobelY, w, h, k);
-    double t12 = now();
+    // double t11 = now();
+    // conv2d_asm(in, out_asm2, sobelY, w, h, k);
+    // double t12 = now();
 
-    float* mag = calloc(w*h,sizeof(float));
+    // float* mag = calloc(w*h,sizeof(float));
 
-    for (int i =0 ;i<w*h ;i++) {
-        mag[i]= out_asm[i]*out_asm[i] + out_asm2[i] * out_asm2[i];
-    }
-    int count = 0;
-    for (int i = 0 ; i < h * w ; i++) {
-        if (mag[i] > T * T) {
-            count++;
-        }
-    }
-    if(count > w*h*0.05)
-        printf("object detected\n");
-    else
-        printf("no object\n");
+    // for (int i =0 ;i<w*h ;i++) {
+    //     mag[i]= out_asm[i]*out_asm[i] + out_asm2[i] * out_asm2[i];
+    // }
+    // int count = 0;
+    // for (int i = 0 ; i < h * w ; i++) {
+    //     if (mag[i] > T * T) {
+    //         count++;
+    //     }
+    // }
+    // if(count > w*h*0.05)
+    //     printf("object detected\n");
+    // else
+    //     printf("no object\n");
 
 
 
@@ -158,10 +163,39 @@ int main()
     conv2d_c(in, out_c, ker, w, h, k);
     double t2 = now();
     writePGM("output_c.pgm", out_c, w, h);
+
+
+
+    int pad = k/2;
+    int h2 = h + 2*pad;
+    int w2 = w + 2*pad;
+    int w_pad = ((w2 + 7) / 8) * 8;
+
+    float* in_raw = readPGM(input, &w, &h);
+
+    float* in_pad  = calloc(w_pad*h2, sizeof(float));
+    float* out_pad = calloc(w_pad*h2, sizeof(float));
+
+    for(int y=0; y<h; y++){
+        memcpy(in_pad + (y+pad)*w_pad + pad,in_raw + y*w,w*sizeof(float)); //(تعداد عدد خوانده شده,ادرس مبدا,ادرس مقصد)
+    }
+
+
+
+
     double t3 = now();
-    conv2d_asm(in, out_asm, ker, w, h, k);
+    conv2d_asm(in_pad, out_pad, ker, w_pad, h2, k);
     double t4 = now();
-    writePGM("output_asm.pgm", out_asm, w, h);
+
+
+    float* out_final = malloc(w*h*sizeof(float));
+    for(int y=0; y<h; y++)
+    {
+        memcpy(out_final + y*w,
+            out_pad + y*w_pad,
+            w*sizeof(float));
+    }
+    writePGM("output_asm.pgm", out_final, w, h);
 
     
 
