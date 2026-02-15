@@ -35,17 +35,19 @@ conv2d_asm:
     mov r11, rcx ; w
     shl r11, 2   ; stride = w * 4
 
-    xor r9, r9 ; y = 0 
+    xor r9, r9 
+    add r9,1 ; y = 1
 .y_loop: ; حلقه y
     cmp r9, r8   ; y < h
     jge .done
 
-    xor r10, r10 ;x=0
+    xor r10, r10 
+    add r10,1 ;x=1
 .x_loop: ; x حلقه
     cmp r10, rcx ; x < w
     jge .next_y
 
-    ; مرزهای امن برای AVX
+    ; مرزهای امن برای AVX با توجه به زیرو پدینگ نگران دسترسی خارج از حافظه نیستیم
     cmp r9, 0
     je .scalar_pixel
     mov rax, r8
