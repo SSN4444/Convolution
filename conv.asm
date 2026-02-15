@@ -1,4 +1,6 @@
-default rel
+;پیاده سازی تابع کانولوشن با زبان اسمبلی و استفاده از دستورات برداری SIMD
+
+default rel    ; فعال‌سازی آدرس‌دهی نسبی (relative)
 section .text
 global conv2d_asm
 
@@ -18,7 +20,7 @@ conv2d_asm:
     ;r8 -> h
     ;r9 -> k
 
-    ; بارگزاری وزن ها از کرنل به صورت فلیپ شده 
+    ;  بارگزاری وزن ها از کرنل به صورت فلیپ شده روی تمام رجیستر ymm
     vbroadcastss ymm4, [rdx + 32] ;k8
     vbroadcastss ymm5, [rdx + 28] ;k7
     vbroadcastss ymm6, [rdx + 24] ;k6
@@ -61,10 +63,11 @@ conv2d_asm:
     mov rax, r9
     mul rcx
     add rax, r10 ; y * w + x
+    ;بارگزاری ادرس موثر
     lea r12, [rdi + rax*4] ;in اماده سازی برای خوندن از
     lea r15, [rsi + rax*4] ; out اماده سازی برای نوشتن در 
 
-    vxorps ymm0, ymm0, ymm0 ; accumulator
+    vxorps ymm0, ymm0, ymm0 ; accumulator برای جمع
     
     ; Row -1
     ; ادرس یه سطر بالا از موضعیت کنونی
@@ -73,64 +76,63 @@ conv2d_asm:
     
     vmovups ymm1, [r13-4]
     vmulps  ymm1, ymm1, ymm4 ; k8 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     vmovups ymm1, [r13]
     vmulps  ymm1, ymm1, ymm5 ; k7 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1  ; جمع نتیجه با sum
     
     vmovups ymm1, [r13+4]
     vmulps  ymm1, ymm1, ymm6 ; k6 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     ; Row 0
     ; سطر موقعیت کنونی
     vmovups ymm1, [r12-4]
     vmulps  ymm1, ymm1, ymm7 ; k5 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     vmovups ymm1, [r12]
     vmulps  ymm1, ymm1, ymm8 ; k4 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     vmovups ymm1, [r12+4]
     vmulps  ymm1, ymm1, ymm9 ; k3 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     ; Row +1
     ;یک سطربالاتر از سطر کنونی
-    lea r13, [r12+r11]
+    lea r13, [r12+r11] ;بارگزاری ادرس موثر
     
     vmovups ymm1, [r13-4]
     vmulps  ymm1, ymm1, ymm10 ; k2 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     vmovups ymm1, [r13]
     vmulps  ymm1, ymm1, ymm11 ; k1 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
     
     vmovups ymm1, [r13+4]
     vmulps  ymm1, ymm1, ymm12 ; k0 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
 
     vmovups [r15], ymm0 ; out نوشتن روی 
     add r10, 8 ; x = x + 8
     jmp .x_loop
 
-    ; برای گوشه ها و پیکسل های دست نخورده
+    ; برای گوشه ها و پیکسل های پدینگ
 .scalar_pixel:
-    ;  همون منطق کد سی و ضرب تکی تکی 
+    ; مستقیم کپی کردن از ارایه ورودی در ارایه خروجی
     mov rax, r9
     mul rcx
     add rax, r10 ;موقعیت کنونی = y * w + x
-
     movss xmm0, [rdi + rax*4]
     movss [rsi + rax*4], xmm0 
-    inc r10
+    inc r10 ;x=x+1
     jmp .x_loop
 
 .next_y:
-    inc r9
+    inc r9 ;y=y+1
     jmp .y_loop
 
 .done:
