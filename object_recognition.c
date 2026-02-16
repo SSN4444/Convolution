@@ -106,7 +106,7 @@ void objectRecognition(const char* folder, int N)
 
         //اجرای convolution در asm
         double t3 = now();
-
+        
         conv2d_asm(in_pad, out_pad_gx, sobelX, w_pad, h2, k);
         conv2d_asm(in_pad, out_pad_gy, sobelY, w_pad, h2, k);
 
