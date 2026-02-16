@@ -3,13 +3,9 @@ sudo apt install imagemagick
 convert input2.jpg -colorspace Gray input2.pgm
 make clear
 make
-./main <Blur|Sharpen|Edge_Detection>  <name of picture(.pmg)>
+./main <Blur|Sharpen|Edge_Detection|object_recognition>  <name of picture(.pmg)>
 
-
-
-
-
-// float* out_c2 = calloc(w*h, sizeof(float));
+    // float* out_c2 = calloc(w*h, sizeof(float));
     // float* out_asm2 = calloc(w*h , sizeof(float));
     // float sobelX[9]= {
     //     -1, 0, 1,
