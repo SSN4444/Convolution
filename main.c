@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "object_recognition.h" // اعلان پروتوتایپ 
 
 double now(); //پروتوتایپ تابع مربوط به زمان در فایل timer.c
 
@@ -72,9 +73,15 @@ void writePGM(const char* name, float* img, int w, int h)
 
 int main(int argc, char *argv[])
 {   
+
+    if (!strcmp("object_recognition",argv[1])) {
+        objectRecognition("inputs",400);
+        return 0;
+    }
+
     // اگر پارامتر های لازم ورودی را نداشت -> خروج از برنامه 
     if (argc < 3) {
-    printf("Usage: %s <Blur|Sharpen|Edge_Detection|object_recognition>  <name of picture(.pmg)>\n", argv[0]);
+    printf("Usage: %s <Blur|Sharpen|Edge_Detection>  <name of picture(.pmg)>\n", argv[0]);
     return 1;
     }
 
@@ -99,7 +106,6 @@ int main(int argc, char *argv[])
     double t3;
     double t4;
     int count = 0;
-    if (strcmp("object_recognition",argv[1])) {
         // Edge_Detection 
         float ker_Edge[9] = {
             -1,-1,-1,
@@ -187,106 +193,12 @@ int main(int argc, char *argv[])
         }
 
         err /= cnt;
-    }
-    else {
-
-        //zero paddings
-        int pad = k/2;
-        int h2 = h + 2*pad;
-        // تعداد سطر ها بر ۸ بخش پذیر باشد تا در هشت تا هشت تا خوندن اعداد به مشکل نخوریم
-        int w2 = w + 2*pad;
-        int w_pad = ((w2 + 7) / 8) * 8;
-        w_pad += 2;
-
-        float* in_pad  = calloc(w_pad*h2, sizeof(float));
-        float* out_pad = calloc(w_pad*h2, sizeof(float));
-        //padding
-        for(int y=0; y<h; y++){
-            memcpy(in_pad + (y+pad)*w_pad + pad,in + y*w,w*sizeof(float)); //(تعداد عدد خوانده شده,ادرس مبدا,ادرس مقصد)
-        }
-
-
-        // کرنل گرادیان افقی (لبه‌های عمودی)
-        float sobelX[9]= {
-            -1, 0, 1,
-            -2, 0, 2,
-            -1, 0, 1
-        };
-
-        // کرنل گرادیان عمودی (لبه‌های افقی)
-        float sobelY[9]= {
-            -1, -2, -1,
-            0,  0,  0,
-            1,  2,  1
-        };
-
-
-        // آرایه خروجی پد شده برای نتایج ASM
-        float* out_asm2 = calloc(w_pad*h2 , sizeof(float));
-        float* out_asm3 = calloc(w_pad*h2 , sizeof(float));
-
-
-        //  اجرای کانولوشن با اسمبلی (Sobel X) 
-        double t7 = now();
-        conv2d_asm(in_pad, out_asm2, sobelX, w_pad, h2, k);
-        double t8 = now();
-
-
-        //  اجرای کانولوشن با اسمبلی (Sobel Y) 
-        double t9 = now();
-        conv2d_asm(in_pad, out_asm3, sobelY, w_pad, h2, k);
-        double t10 = now();
-
-
-        // آرایه‌های نهایی بدون padding
-        float* out_final_asm2 = malloc(w*h*sizeof(float));
-        float* out_final_asm3 = malloc(w*h*sizeof(float));
-
-
-        // حذف padding و کپی فقط بخش اصلی تصویر
-        for(int y=0; y<h; y++){
-            memcpy(out_final_asm2 + y*w,
-                out_asm2 + (y+pad)*w_pad + pad,
-                w*sizeof(float));
-        }
-
-        for(int y=0; y<h; y++){
-            memcpy(out_final_asm3 + y*w,
-                out_asm3 + (y+pad)*w_pad + pad,
-                w*sizeof(float));
-        }
-
-
-        // آستانه تشخیص لبه
-        float T = 60.0f;
-
-        // محاسبه |G|^2 = Gx^2 + Gy^2 و شمارش پیکسل‌های قوی
-        for (int i = 0; i < w*h; i++) {
-            float gx = out_final_asm2[i];
-            float gy = out_final_asm3[i];
-
-            if (gx*gx + gy*gy > T*T)
-                count++;
-        }
-    }
-
-
     //گزارش نتایج
+    printf("C time = %f\n", t2-t1);
+    printf("ASM time = %f\n", t4-t3);
+    printf("speedup : %f\n",(t2-t1) / (t4-t3));
+    printf("error : %f\n",err);
 
-
-    // اگر بیش از ۵٪ تصویر لبه باشد → شی وجود دارد
-    if (!strcmp("object_recognition",argv[1])) {
-        if(count > w*h*0.03)
-            printf("object detected\n");
-        else
-            printf("no object\n");
-    }
-    else {
-        printf("C time = %f\n", t2-t1);
-        printf("ASM time = %f\n", t4-t3);
-        printf("speedup : %f\n",(t2-t1) / (t4-t3));
-        printf("error : %f\n",err);
-    }
 
     //ازاد سازی حافظه 
     free(in);
