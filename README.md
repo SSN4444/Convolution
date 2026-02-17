@@ -69,7 +69,7 @@ Magnitude = sqrt(Gx² + Gy²)
 
 ```
 .
-├── main.c                  # اجرای تست تکی
+├── main.c                  # فایل اصلی برنامه
 ├── conv.c                  # نسخه C کانولوشن
 ├── conv.asm                # نسخه Assembly + AVX
 ├── conv.h                  # header
