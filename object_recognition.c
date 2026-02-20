@@ -93,7 +93,7 @@ void objectRecognition(const char* folder, int N)
         // تعداد سطر ها بر ۸ بخش پذیر باشد تا در هشت تا هشت تا خوندن اعداد به مشکل نخوریم
         int w2 = w + 2*pad;
         int w_pad = ((w2 + 7) / 8) * 8;
-        w_pad += 2;
+        w_pad += 2 * pad;
 
         float* in_pad  = calloc(w_pad*h2, sizeof(float));
         float* out_pad_gx = calloc(w_pad*h2, sizeof(float));

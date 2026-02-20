@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "object_recognition.h" // اعلان پروتوتایپ 
+#include "object_recognition.h"// اعلان پروتوتایپ 
+#include "pattern_recognition.h" // اعلان پروتوتایپ 
 
 double now(); //پروتوتایپ تابع مربوط به زمان در فایل timer.c
 
