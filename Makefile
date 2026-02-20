@@ -28,4 +28,4 @@ main: main.c conv.c  object_recognition.c timer.c conv.o
 
 # پاک کردن فایل‌های ساخته شده
 clean:
-	rm -f main *.o output_c.pgm output_asm.pgm
+	rm -f main *.o output_c.pgm output_asm.pgm out_centerOfPattern.pgm

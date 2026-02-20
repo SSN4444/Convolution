@@ -1,6 +1,7 @@
 sudo apt update
 sudo apt install imagemagick
-convert input2.jpg -colorspace Gray input2.pgm
+convert input.jpg -colorspace Gray input.pgm
+convert ker.pgm -resize 30x30 ker.pgm
 make clear
 make
 ./main <Blur|Sharpen|Edge_Detection>  <name of picture(.pmg)>

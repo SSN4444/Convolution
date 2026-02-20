@@ -1,144 +1,110 @@
 ;پیاده سازی تابع کانولوشن با زبان اسمبلی و استفاده از دستورات برداری SIMD
-
-default rel    ; فعال‌سازی آدرس‌دهی نسبی (relative)
+default rel ; فعال‌سازی آدرس‌دهی نسبی (relative)
 section .text
 global conv2d_asm
 
 conv2d_asm:
+
     ;رجیستر هایی که بعد از انجام عملیات تابع نباید تغییر کنند را در استک پوش میکنیم تا در اخر انها را مجددا برگردانیم
     push r12
     push r13
     push r14
     push r15
     push rbx
+
+    ; پارامترها: rdi=in, rsi=out, rdx=ker, rcx=w, r8=h, r9=k
     
-    ;پارامتر های تابع
-    ;rdi -> in
-    ;rsi -> out
-    ;rdx -> ker
-    ;rcx -> w
-    ;r8 -> h
-    ;r9 -> k
+    mov r14, r9         ; r14 = k (اندازه کرنل)
+    shr r14, 1          ; r14 = pad = k / 2 (برای شروع از پیکسل درست)
 
-    ;  بارگزاری وزن ها از کرنل به صورت فلیپ شده روی تمام رجیستر ymm
-    vbroadcastss ymm4, [rdx + 32] ;k8
-    vbroadcastss ymm5, [rdx + 28] ;k7
-    vbroadcastss ymm6, [rdx + 24] ;k6
-    vbroadcastss ymm7, [rdx + 20] ;k5
-    vbroadcastss ymm8, [rdx + 16] ;k4
-    vbroadcastss ymm9, [rdx + 12] ;k3
-    vbroadcastss ymm10,[rdx + 8]  ;k2
-    vbroadcastss ymm11,[rdx + 4]  ;k1
-    vbroadcastss ymm12,[rdx + 0]  ;k0
+    ; شروع حلقه سطرهای تصویر (y)
+    mov rbx, r14        ; rbx = y = pad
+.y_loop:
+    mov rax, r8 
+    sub rax, r14        ; limit = h - pad
+    cmp rbx, rax 
+    jge .done   ;اگر به سطر اخر رسیدیم کار تمام است
 
-
-    mov r11, rcx ; w
-    shl r11, 2   ; stride = w * 4
-
-    xor r9, r9 
-    add r9,1 ; y = 1
-.y_loop: ; حلقه y
-    cmp r9, r8   ; y < h
-    jge .done
-
-    xor r10, r10 
-    add r10,1 ;x=1
-.x_loop: ; x حلقه
-    cmp r10, rcx ; x < w
-    jge .next_y
-
-    ; مرزهای امن برای AVX با توجه به زیرو پدینگ نگران دسترسی خارج از حافظه نیستیم
-    cmp r9, 0
-    je .scalar_pixel
-    mov rax, r8
-    dec rax
-    cmp r9, rax ;y < h-1
-    jge .scalar_pixel
-    cmp r10, 0
-    je .scalar_pixel
+    ; شروع حلقه ستون‌های تصویر (x)
+    mov r12, r14        ; r12 = x = pad
+.x_loop:
     mov rax, rcx
-    sub rax, 9 ; به خاطر اینکه هشت تا هشت تا میخونیم و ضرب همزمان انجام میدیم 
-    cmp r10, rax ; x <= w-۹
-    jg .scalar_pixel
+    sub rax, r14
+    sub rax, 8          ;  (w - pad - 8)چک برای پردازش 8 پیکسل همزمان
+    cmp r12, rax        ; rax -> اخرین نقطه ایست که میتوان بعد از ان ۸ پیکسل را مورد پردازش قرار داد
+    jg .scalar_pixel    ; اگر به انتهای سطر نزدیک شدیم، گذر میکنیم 
 
-    
-    mov rax, r9
-    mul rcx
-    add rax, r10 ; y * w + x
-    ;بارگزاری ادرس موثر
-    lea r12, [rdi + rax*4] ;in اماده سازی برای خوندن از
-    lea r15, [rsi + rax*4] ; out اماده سازی برای نوشتن در 
+    vxorps ymm0, ymm0, ymm0 ; Accumulator (sum) برای 8 پیکسل خروجی
 
-    vxorps ymm0, ymm0, ymm0 ; accumulator برای جمع
-    
-    ; Row -1
-    ; ادرس یه سطر بالا از موضعیت کنونی
-    mov r13, r12
-    sub r13, r11
-    
-    vmovups ymm1, [r13-4]
-    vmulps  ymm1, ymm1, ymm4 ; k8 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r13]
-    vmulps  ymm1, ymm1, ymm5 ; k7 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1  ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r13+4]
-    vmulps  ymm1, ymm1, ymm6 ; k6 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    ; Row 0
-    ; سطر موقعیت کنونی
-    vmovups ymm1, [r12-4]
-    vmulps  ymm1, ymm1, ymm7 ; k5 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r12]
-    vmulps  ymm1, ymm1, ymm8 ; k4 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r12+4]
-    vmulps  ymm1, ymm1, ymm9 ; k3 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    ; Row +1
-    ;یک سطربالاتر از سطر کنونی
-    lea r13, [r12+r11] ;بارگزاری ادرس موثر
-    
-    vmovups ymm1, [r13-4]
-    vmulps  ymm1, ymm1, ymm10 ; k2 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r13]
-    vmulps  ymm1, ymm1, ymm11 ; k1 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
-    
-    vmovups ymm1, [r13+4]
-    vmulps  ymm1, ymm1, ymm12 ; k0 * وزن پیکسل
-    vaddps  ymm0, ymm0, ymm1 ; جمع نتیجه با sum
+    ;  حلقه روی سطرهای کرنل (ky) 
+    xor r13, r13        ; r13 = ky = 0
+.ky_loop:
+    ; محاسبه آدرس سطر در تصویر: (y + ky - pad) * w 
 
-    vmovups [r15], ymm0 ; out نوشتن روی 
-    add r10, 8 ; x = x + 8
+    ; محاسبه آدرس سطر در کرنل به صورت فلیپ شده -> (k-1-ky) * k
+    mov r15,r9
+    dec r15
+    sub r15, r13
+    imul r15, r9        
+
+    ;  حلقه روی ستون‌های کرنل (kx) 
+    xor r10, r10        ; r10 = kx = 0
+.kx_loop:
+    ;  پخش کردن وزن فعلی کرنل weight = ker[ky * k + kx]
+    mov rax, r15
+    add rax, r9
+    dec rax
+    sub rax,r10 ;rax = (k-1-ky)*k + (k-1-kx)
+    vbroadcastss ymm2, [rdx + rax*4] ;خواندن وزن از کرنل
+
+    ; خواندن 8 پیکسل از تصویر: image[((y+ky-pad)*w) + (x+kx-pad)]
+    mov rax, rbx  ; rax = y = rbx
+    add rax, r13   ; rax = y + ky
+    sub rax, r14    ;rax = y + ky - pad 
+    imul rax, rcx    ;rax = (y + ky - pad) * w -> سطر  
+    add rax, r12        ; اضافه کردن x
+    add rax, r10        ; اضافه کردن kx
+    sub rax, r14        ; کسر کردن pad 
+    ;rax = iy * w - ix
+    
+    vmovups ymm1, [rdi + rax*4] ;خواندن از ارایه ورودی 
+    
+    ;  ضرب و جمع در یک سیکل پرداشی 
+    vfmadd231ps ymm0, ymm1, ymm2 ; ymm0 = (ymm1 * ymm2) + ymm0
+
+    inc r10
+    cmp r10, r9         ; kx < k
+    jl .kx_loop
+
+    inc r13
+    cmp r13, r9         ; ky < k
+    jl .ky_loop
+
+    ; ذخیره نتیجه 8 پیکسل در خروجی
+    mov rax, rbx ;rax = y
+    imul rax, rcx ;rax = y * w
+    add rax, r12 ;rax  = y * w  + x
+    vmovups [rsi + rax*4], ymm0
+
+    add r12, 8          ; حرکت 8 پیکسل به جلو در عرض تصویر
     jmp .x_loop
 
-    ; برای گوشه ها و پیکسل های پدینگ
 .scalar_pixel:
-    ; مستقیم کپی کردن از ارایه ورودی در ارایه خروجی
-    mov rax, r9
-    mul rcx
-    add rax, r10 ;موقعیت کنونی = y * w + x
-    movss xmm0, [rdi + rax*4]
-    movss [rsi + rax*4], xmm0 
-    inc r10 ;x=x+1
-    jmp .x_loop
+    ; اینجا همه ی پیکسل ها به خاطر پدینگ صفر هستند پس همه را رد میکنیم تا به سطر بعدی برسیم
+    inc r12
+    mov rax, rcx ;rax = w
+    sub rax, r14 ; rax = w - pad
+    cmp r12, rax ; x < w - pad
+    jl .scalar_pixel
 
 .next_y:
-    inc r9 ;y=y+1
+    inc rbx             ; y++
     jmp .y_loop
 
 .done:
-    vzeroupper ;avx از sse برای بازگشت به حالت 
+    vzeroupper ; برای رفتن از حالت AVX به SSE 
+
+    ;برگردانن پارامتر هایی کگه در ابتدا در استک ذخیره کرده بودیم
     pop rbx
     pop r15
     pop r14
@@ -146,4 +112,4 @@ conv2d_asm:
     pop r12
     ret
 
-section .note.GNU-stack noalloc noexec nowrite progbits  ; به کامپایلر و لینکر میگیم که استک اجرایی نیست و فقط برای دیتا هست تا برنامه امن اجرا بشه
+section .note.GNU-stack noalloc noexec nowrite progbits ; به کامپایلر و لینکر میگیم که استک اجرایی نیست و فقط برای دیتا هست تا برنامه امن اجرا بشه
