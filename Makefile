@@ -21,8 +21,8 @@ conv.o: conv.asm
 
 # کامپایل و لینک کل پروژه
 # -lm برای توابع ریاضی مثل fabs,...
-main: main.c conv.c  object_recognition.c timer.c conv.o
-	$(CC) $(CFLAGS) main.c conv.c object_recognition.c timer.c conv.o -lm -o main
+main: main.c conv.c  object_recognition.c pattern_recognition.c timer.c conv.o 
+	$(CC) $(CFLAGS) main.c conv.c object_recognition.c pattern_recognition.c timer.c conv.o -lm -o main
 
 
 

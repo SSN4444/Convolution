@@ -13,7 +13,10 @@ double now(); //پروتوتایپ تابع مربوط به زمان در فای
 float* readPGM(const char* name, int* w, int* h)
 {
     FILE* f = fopen(name, "rb");   // باز کردن فایل باینری
-    if (!f) { printf("Cannot open input\n"); exit(1); }
+    if (!f) { 
+        printf("%s\n",name);
+        printf("Cannot open input\n"); exit(1); 
+    }
 
     char m[3];
 
@@ -79,6 +82,11 @@ int main(int argc, char *argv[])
         objectRecognition("inputs",400);
         return 0;
     }
+    if (!strcmp("pattern_recognition",argv[1])) {
+        patternRecognition("inputs2",150,argv[2]);
+        return 0;
+    }
+
     if (!strcmp("ker",argv[1])) {
         // ۱. خواندن تصویر و معکوس کردن (Invert)
         int w,h;

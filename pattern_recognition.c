@@ -125,12 +125,12 @@ void patternRecognition(const char* folder, int count,const char* kernel){
             w*sizeof(float));
         }
         //  محاسبه انرژی خودِ الگو (Template Energy)
-        float energy_k = 0;
+        energy_k = 0;
         for(int i = 0; i < w_k * h_k; i++) {
             energy_k += ker[i] * ker[i];
         }
 
-        float max_ncc = -1.0f;
+        max_ncc = -1.0f;
         // int best_x = 0, best_y = 0;
 
         for (int y = 0; y < h - h_k; y++) {
@@ -160,7 +160,7 @@ void patternRecognition(const char* folder, int count,const char* kernel){
         }
 
         //  نمایش نتیجه نهایی
-        float confidence = max_ncc * 100.0f;
+        confidence = max_ncc * 100.0f;
         if (confidence < 0) confidence = 0;
         if (confidence > 100) confidence = 100;
         if (confidence > 85.0f) { // با دقت ۸۵ درصد
@@ -203,7 +203,7 @@ void patternRecognition(const char* folder, int count,const char* kernel){
     printf("ASM total time  : %f sec\n", time_asm);
     printf("Speedup         : %.2fx\n", time_c/time_asm);
 
-    printf("PATTERN FOUND IN %d FROM %d PICTURE (C)\n", found_c, count);
-    printf("PATTERN FOUND IN %d FROM %d PICTURE (ASM)\n", found_asm, count);
+    printf("PATTERN FOUND IN %d FROM %d PICTURE (C)\n", patternFounded_c, count);
+    printf("PATTERN FOUND IN %d FROM %d PICTURE (ASM)\n", patternFounded_asm, count);
 
 }
