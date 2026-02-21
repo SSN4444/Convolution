@@ -76,8 +76,7 @@ void writePGM(const char* name, float* img, int w, int h)
 
 
 int main(int argc, char *argv[])
-{   
-
+{ 
     if (!strcmp("object_recognition",argv[1])) {
         objectRecognition("inputs",400);
         return 0;
@@ -85,113 +84,7 @@ int main(int argc, char *argv[])
     if (!strcmp("pattern_recognition",argv[1])) {
         patternRecognition("inputs2",150,argv[2]);
         return 0;
-    }
-
-    if (!strcmp("ker",argv[1])) {
-        // ۱. خواندن تصویر و معکوس کردن (Invert)
-        int w,h;
-        // ساخت ادرس تصویر ورودی
-        char base[256] = "inputs/";
-        strcat(base, argv[2]);     
-        char* input = base;
-        float* in = readPGM(input, &w, &h);
-        for (int i = 0 ; i < w*h ; i++) {
-            in[i] = 255.0f - in[i]; 
-        }
-
-        // ۲. خواندن کرنل و آماده‌سازی (فقط یک بار)
-        int w_k, h_k;
-        float* ker = readPGM("ker.pgm", &w_k, &h_k);
-        float sum_k = 0.0f;
-        
-        // معکوس کردن کرنل (تا پلاس سفید شود) و محاسبه مجموع
-        for(int i = 0; i < w_k * h_k; i++) {
-            ker[i] = 255.0f - ker[i];
-            sum_k += ker[i];
-        }
-        float avg_k = sum_k / (w_k * h_k);
-
-        float perfect_match_score = 0.0f;
-        for(int i = 0; i < w_k * h_k; i++) {
-            ker[i] -= avg_k; // Zero-mean کردن
-            // محاسبه سقف امتیاز: اگر یک پیکسل ۲۵۵ در وزن مثبت ضرب شود
-            if (ker[i] > 0) {
-                perfect_match_score += ker[i] * 255.0f;
-            }
-        }
-
-        // ۳. اجرای کانولوشن (با نسخه اسمبلی یا C)
-        float* out_c = calloc(w*h, sizeof(float));
-        conv2d_c(in, out_c, ker, w, h, w_k);
-        writePGM("output_c.pgm", out_c, w, h);
-
-
-        // ۱. پیدا کردن ماکزیمم و میانگین خروجی
-        // ۱. محاسبه انرژی خودِ الگو (Template Energy)
-        float energy_k = 0;
-        for(int i = 0; i < w_k * h_k; i++) {
-            energy_k += ker[i] * ker[i];
-        }
-
-        float max_ncc = -1.0f;
-        int best_x = 0, best_y = 0;
-
-        for (int y = 0; y < h - h_k; y++) {
-            for (int x = 0; x < w - w_k; x++) {
-                // ۲. محاسبه انرژی تکه‌ای از تصویر که زیر الگو قرار دارد (Window Energy)
-                float energy_win = 0;
-                for (int ky = 0; ky < h_k; ky++) {
-                    for (int kx = 0; kx < w_k; kx++) {
-                        float pixel = in[(y + ky) * w + (x + kx)];
-                        energy_win += pixel * pixel;
-                    }
-                }
-
-                // ۳. مقدار خروجی کانولوشن در این نقطه
-                float val = out_c[y * w + x];
-
-                // ۴. فرمول NCC: همبستگی تقسیم بر جذر ضرب انرژی‌ها
-                float denom = sqrtf(energy_k * energy_win);
-                float ncc = (denom > 0) ? (val / denom) : 0;
-
-                if (ncc > max_ncc) {
-                    max_ncc = ncc;
-                    best_x = x;
-                    best_y = y;
-                }
-            }
-        }
-
-        // ۵. نمایش نتیجه نهایی
-        float confidence = max_ncc * 100.0f;
-        if (confidence < 0) confidence = 0;
-        if (confidence > 100) confidence = 100;
-
-        printf("Max NCC Score: %.4f\n", max_ncc);
-        printf("Result: %s (Confidence: %.2f%%) at [%d, %d]\n", 
-            (confidence > 85.0f) ? "FOUND" : "NOT FOUND", confidence, best_x, best_y);
-        // ۱. پیدا کردن مقدار ماکزیمم واقعی که اسمبلی/C تولید کرده
-        float absolute_max = -1e20f; 
-        for (int i = 0; i < w * h; i++) {
-            if (out_c[i] > absolute_max) absolute_max = out_c[i];
-        }
-
-        // ۲. تمیز کردن تصویر: فقط قله‌ها سفید، بقیه سیاه مطلق
-        for (int i = 0; i < w * h; i++) {
-            // اگر مقدار پیکسل بیشتر از ۹۵٪ِ ماکزیمم بود (یعنی خودِ الگوست)
-            if (out_c[i] >= absolute_max * 0.95f && absolute_max > 0) {
-                out_c[i] = 255.0f; // سفید درخشان
-            } else {
-                out_c[i] = 0.0f;   // سیاه مطلق
-            }
-        }
-
-        // حالا تصویر را ذخیره کن
-
-        writePGM("out_centerOfPattern.pgm", out_c, w, h);
-        return 0;
-    }
-
+    }    
     // اگر پارامتر های لازم ورودی را نداشت -> خروج از برنامه 
     if (argc < 3) {
     printf("Usage: %s <Blur|Sharpen|Edge_Detection>  <name of picture(.pmg)>\n", argv[0]);

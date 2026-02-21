@@ -34,6 +34,10 @@ void patternRecognition(const char* folder, int count,const char* kernel){
     {
         char name[256];
         sprintf(name, "%s/input%d.pgm", folder, id);
+        char out_c_address[256];
+        sprintf(out_c_address, "outputs_c/out%d.pgm", id);
+        char out_asm_address[256];
+        sprintf(out_asm_address, "outputs_asm/out%d.pgm", id);
 
         // خواندن تصویر و معکوس کردن (Invert)
         int w,h;
@@ -56,8 +60,6 @@ void patternRecognition(const char* folder, int count,const char* kernel){
         }
 
         float max_ncc = -1.0f;
-        // int best_x = 0, best_y = 0;
-
         for (int y = 0; y < h - h_k; y++) {
             for (int x = 0; x < w - w_k; x++) {
                 //  محاسبه انرژی تکه‌ای از تصویر که زیر الگو قرار دارد (Window Energy)
@@ -78,13 +80,11 @@ void patternRecognition(const char* folder, int count,const char* kernel){
 
                 if (ncc > max_ncc) {
                     max_ncc = ncc;
-                    // best_x = x;
-                    // best_y = y;
                 }
             }
         }
 
-        //  نمایش نتیجه نهایی
+        //  نتیجه نهایی
         float confidence = max_ncc * 100.0f;
         if (confidence < 0) confidence = 0;
         if (confidence > 100) confidence = 100;
@@ -92,6 +92,7 @@ void patternRecognition(const char* folder, int count,const char* kernel){
             patternFounded_c ++;
         }
         double t2 = now();
+        writePGM(out_c_address, out_c, w, h);
         time_c += t2-t1;
 
 
@@ -131,8 +132,6 @@ void patternRecognition(const char* folder, int count,const char* kernel){
         }
 
         max_ncc = -1.0f;
-        // int best_x = 0, best_y = 0;
-
         for (int y = 0; y < h - h_k; y++) {
             for (int x = 0; x < w - w_k; x++) {
                 //  محاسبه انرژی تکه‌ای از تصویر که زیر الگو قرار دارد (Window Energy)
@@ -153,34 +152,30 @@ void patternRecognition(const char* folder, int count,const char* kernel){
 
                 if (ncc > max_ncc) {
                     max_ncc = ncc;
-                    // best_x = x;
-                    // best_y = y;
                 }
             }
         }
 
-        //  نمایش نتیجه نهایی
+        //   نتیجه نهایی
         confidence = max_ncc * 100.0f;
         if (confidence < 0) confidence = 0;
         if (confidence > 100) confidence = 100;
-        if (confidence > 85.0f) { // با دقت ۸۵ درصد
+        if (confidence > 85.0f) { // با دقت 85 درصد
             patternFounded_asm ++;
+            // printf("%s\n",name);
         }
         double t4 = now();
         time_asm += t4-t3;
+        writePGM(out_asm_address, out_asm, w, h);
 
 
-
-        // printf("Max NCC Score: %.4f\n", max_ncc);
-        // printf("Result: %s (Confidence: %.2f%%) at [%d, %d]\n", 
-        //     (confidence > 85.0f) ? "FOUND" : "NOT FOUND", confidence, best_x, best_y);
-        // پیدا کردن مقدار ماکزیمم واقعی که C تولید کرده
+        // //  پیدا کردن مقدار ماکزیمم واقعی که سی تولید کرده
         // float absolute_max = -1e20f; 
         // for (int i = 0; i < w * h; i++) {
         //     if (out_c[i] > absolute_max) absolute_max = out_c[i];
         // }
 
-        // // ۲. تمیز کردن تصویر: فقط قله‌ها سفید، بقیه سیاه مطلق
+        // //  فقط قله‌ها سفید، بقیه سیاه مطلق
         // for (int i = 0; i < w * h; i++) {
         //     // اگر مقدار پیکسل بیشتر از ۹۵٪ِ ماکزیمم بود (یعنی خودِ الگوست)
         //     if (out_c[i] >= absolute_max * 0.95f && absolute_max > 0) {
@@ -189,9 +184,33 @@ void patternRecognition(const char* folder, int count,const char* kernel){
         //         out_c[i] = 0.0f;   // سیاه مطلق
         //     }
         // }
+        // writePGM(out_c_address, out_c, w, h);
 
 
-        // writePGM("out_centerOfPattern.pgm", out_c, w, h);
+        // // پیدا کردن مقدار ماکزیمم واقعی که اسمبلی تولید کرده
+        // float absolute_max2 = -1e20f; 
+        // for (int i = 0; i < w * h; i++) {
+        //     if (out_asm[i] > absolute_max2) absolute_max2 = out_c[i];
+        // }
+
+        // //  فقط قله‌ها سفید، بقیه سیاه مطلق
+        // for (int i = 0; i < w * h; i++) {
+        //     // اگر مقدار پیکسل بیشتر از ۹۵٪ِ ماکزیمم بود (یعنی خودِ الگوست)
+        //     if (out_asm[i] >= absolute_max2 * 0.95f && absolute_max2 > 0) {
+        //         out_asm[i] = 255.0f; // سفید درخشان
+        //     } else {
+        //         out_asm[i] = 0.0f;   // سیاه مطلق
+        //     }
+        // }
+
+        // // حالا تصویر را ذخیره کن
+
+        // writePGM(out_asm_address, out_c, w, h);
+        free(out_c);
+        free(out_asm);
+        free(in_pad);
+        free(in);
+        free(out_pad);
 
     }
 
