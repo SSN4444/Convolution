@@ -203,8 +203,6 @@ void patternRecognition(const char* folder, int count,const char* kernel){
         //     }
         // }
 
-        // // حالا تصویر را ذخیره کن
-
         // writePGM(out_asm_address, out_c, w, h);
         free(out_c);
         free(out_asm);
